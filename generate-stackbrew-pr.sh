@@ -90,7 +90,7 @@ function pr_payload() {
 
   printf "{
     \"title\": \"Node: %s\",
-    \"body\" : \"%s.\n cc %s\",
+    \"body\" : \"%s.<br />cc %s\",
     \"head\" : \"%s\",
     \"base\": \"master\"
   }" "${escaped_message}" "${body}" "${maintainers}" "${GITHUB_USERNAME}:${BRANCH_NAME}"
@@ -100,7 +100,7 @@ function comment_payload() {
   local pr_url
   pr_url="${1}"
   echo "{
-    \"body\": \"Created PR to the ${REPO_NAME} repo (${pr_url})\"
+    \"body\": \"Created PR to the ${REPO_NAME} repo (${pr_url}). See https://github.com/docker-library/faq#an-images-source-changed-in-git-now-what if you are wondering when it will be available on the Docker Hub.\"
   }"
 }
 

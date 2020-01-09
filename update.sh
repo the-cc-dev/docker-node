@@ -10,14 +10,14 @@ function usage() {
     $0 [-s] [MAJOR_VERSION(S)] [VARIANT(S)]
 
   Examples:
-    - update.sh                   # Update all images
-    - update.sh -s                # Update all images, skip updating Alpine and Yarn
-    - update.sh 8,10              # Update version 8 and 10 and variants (default, slim, alpine etc.)
-    - update.sh -s 8              # Update version 8 and variants, skip updating Alpine and Yarn
-    - update.sh 8 slim,stretch    # Update only slim and stretch variants for version 8
-    - update.sh -s 8 slim,stretch # Update only slim and stretch variants for version 8, skip updating Alpine and Yarn
-    - update.sh . alpine          # Update the alpine variant for all versions
-    - update.sh -t                # Update .travis.yml only
+    - update.sh                      # Update all images
+    - update.sh -s                   # Update all images, skip updating Alpine and Yarn
+    - update.sh 8,10                 # Update all variants of version 8 and 10
+    - update.sh -s 8                 # Update version 8 and variants, skip updating Alpine and Yarn
+    - update.sh 8 buster-slim,buster # Update only buster's slim and buster variants for version 8
+    - update.sh -s 8 stretch         # Update only stretch variant for version 8, skip updating Alpine and Yarn
+    - update.sh . alpine             # Update the alpine variant for all versions
+    - update.sh -t                   # Update .travis.yml only
 
   OPTIONS:
     -s Security update; skip updating the yarn and alpine versions.
@@ -131,7 +131,7 @@ function update_node_version() {
   (
     cp "${template}" "${dockerfile}-tmp"
     local fromprefix=""
-    if [ "${arch}" != "amd64" ] && [ "${variant}" != "onbuild" ]; then
+    if [ "${arch}" != "amd64" ]; then
       fromprefix="${arch}\\/"
     fi
 
@@ -146,9 +146,6 @@ function update_node_version() {
     fi
     sed -Ei -e 's/^(ENV YARN_VERSION ).*/\1'"${yarnVersion}"'/' "${dockerfile}-tmp"
 
-    # Only for onbuild variant
-    sed -Ei -e 's/^(FROM .*node:)[^-]*(-.*)/\1'"${nodeVersion}"'\2/' "${dockerfile}-tmp"
-
     # shellcheck disable=SC1004
     new_line=' \\\
 '
@@ -162,12 +159,13 @@ function update_node_version() {
       sed -Ei -e "/${pattern}/d" "${dockerfile}-tmp"
     done
 
-    if [ "${variant}" = "alpine" ]; then
-      if [ "${SKIP}" = true ]; then
-        # Get the currently used Alpine version
-        alpine_version=$(grep "FROM" "${dockerfile}" | cut -d':' -f2)
-      fi
+    if is_alpine "${variant}"; then
+      alpine_version="${variant#*alpine}"
+      checksum="\"$(
+        curl -sSL --compressed "https://unofficial-builds.nodejs.org/download/release/v${nodeVersion}/SHASUMS256.txt" | grep "node-v${nodeVersion}-linux-x64-musl.tar.xz" | cut -d' ' -f1
+      )\""
       sed -Ei -e "s/(alpine:)0.0/\\1${alpine_version}/" "${dockerfile}-tmp"
+      sed -Ei -e "s/CHECKSUM=CHECKSUM_x64/CHECKSUM=${checksum}/" "${dockerfile}-tmp"
     elif is_debian "${variant}"; then
       sed -Ei -e "s/(buildpack-deps:)name/\\1${variant}/" "${dockerfile}-tmp"
     elif is_debian_slim "${variant}"; then
@@ -243,8 +241,11 @@ for version in "${versions[@]}"; do
       template_file="${parentpath}/Dockerfile-debian.template"
     elif is_debian_slim "${variant}"; then
       template_file="${parentpath}/Dockerfile-slim.template"
+    elif is_alpine "${variant}"; then
+      template_file="${parentpath}/Dockerfile-alpine.template"
     fi
 
+    cp "${parentpath}/docker-entrypoint.sh" "${version}/${variant}/docker-entrypoint.sh"
     if [ "${update_version}" -eq 0 ] && [ "${update_variant}" -eq 0 ]; then
       update_node_version "${baseuri}" "${versionnum}" "${template_file}" "${version}/${variant}/Dockerfile" "${variant}" &
     fi

@@ -4,6 +4,7 @@
 
 - [Environment Variables](#environment-variables)
 - [Global npm dependencies](#global-npm-dependencies)
+- [Upgrading/downgrading Yarn](#upgradingdowngrading-yarn)
 - [Handling Kernel Signals](#handling-kernel-signals)
 - [Non-root User](#non-root-user)
 - [Memory](#memory)
@@ -32,12 +33,28 @@ ENV PATH=$PATH:/home/node/.npm-global/bin # optionally if you want to run npm gl
 
 ## Upgrading/downgrading Yarn
 
-If you need to upgrade/downgrade `yarn`, you can do so by issuing the following commands in your `Dockerfile`:
+### Local
+
+If you need to upgrade/downgrade `yarn` for a local install, you can do so by issuing the following commands in your `Dockerfile`:
+
+> Note that if you create some other directory which is not a descendant one from where you ran the command, you will end up using the global (dated) version. If you wish to upgrade `yarn` globally follow the instructions in the next section.
+
+> When following the local install instructions, due to duplicated yarn the image will end up being bigger.
 
 ```Dockerfile
 FROM node:6
 
-ENV YARN_VERSION 1.5.1
+ENV YARN_VERSION 1.16.0
+
+RUN yarn policies set-version $YARN_VERSION
+```
+
+### Global
+
+```Dockerfile
+FROM node:6
+
+ENV YARN_VERSION 1.16.0
 
 RUN curl -fSLO --compressed "https://yarnpkg.com/downloads/$YARN_VERSION/yarn-v$YARN_VERSION.tar.gz" \
     && tar -xzf yarn-v$YARN_VERSION.tar.gz -C /opt/ \
@@ -64,7 +81,7 @@ RUN apk add --no-cache --virtual .build-deps-yarn curl \
 
 ## Handling Kernel Signals
 
-Node.js was not designed to run as PID 1 which leads to unexpected behaviour when running inside of Docker. For example, a Node.js process running as PID 1 will not respond to `SIGTERM` (`CTRL-C`) and similar signals. As of Docker 1.13, you can use the `--init` flag to wrap your Node.js process with a [lightweight init system](https://github.com/krallin/tini) that properly handles running as PID 1.
+Node.js was not designed to run as PID 1 which leads to unexpected behaviour when running inside of Docker. For example, a Node.js process running as PID 1 will not respond to `SIGINT` (`CTRL-C`) and similar signals. As of Docker 1.13, you can use the `--init` flag to wrap your Node.js process with a [lightweight init system](https://github.com/krallin/tini) that properly handles running as PID 1.
 
 ```
 docker run -it --init node
@@ -173,7 +190,7 @@ And Here's a multistage build example
 FROM node:alpine as builder
 
 ## Install build toolchain, install node deps and compile native add-ons
-RUN apk add --no-cache --virtual .gyp python make g++
+RUN apk add --no-cache python make g++
 RUN npm install [ your npm dependencies here ]
 
 FROM node:alpine as app

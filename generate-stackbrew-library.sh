@@ -7,19 +7,17 @@ hash git 2> /dev/null || { echo >&2 "git not found, exiting."; }
 
 # Used dynamically: print "$array_" $1
 # shellcheck disable=SC2034
-array_6='6 boron'
+array_10='10 dubnium'
 # shellcheck disable=SC2034
-array_8='8 carbon'
+array_12='12 erbium lts current'
 # shellcheck disable=SC2034
-array_10='10 dubnium lts'
-# shellcheck disable=SC2034
-array_11='11 current latest'
-# shellcheck disable=SC2034
-array_chakracore_8='chakracore-8'
+array_13='13 latest'
 # shellcheck disable=SC2034
 array_chakracore_10='chakracore-10 chakracore'
 
 default_variant=$(get_config "./" "default_variant")
+
+default_alpine=$(get_config "./" "alpine_version")
 
 cd "$(cd "${0%/*}" && pwd -P)"
 
@@ -93,11 +91,12 @@ for version in "${versions[@]}"; do
     variantAliases=("${versionAliases[@]/%/-${variant//${slash}/-}}")
     if [ "${variant}" = "${default_variant}-slim" ]; then
       variantAliases+=("${versionAliases[@]/%/-slim}")
-    fi
-    variantAliases=("${variantAliases[@]//latest-/}")
-    if [ "${variant}" = "${default_variant}" ]; then
+    elif [ "${variant}" = "alpine${default_alpine}" ]; then
+      variantAliases+=("${versionAliases[@]/%/-alpine}")
+    elif [ "${variant}" = "${default_variant}" ]; then
       variantAliases+=("${versionAliases[@]}")
     fi
+    variantAliases=("${variantAliases[@]//latest-/}")
 
     # Get supported architectures for a specific version and variant.
     # See details in function.sh
